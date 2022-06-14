@@ -1,4 +1,16 @@
+/**
+ * @class
+ * Maneaja las cordenadas y posicion de los diferentes elementos del tablero
+ * como lo son jugadores, casillas, imagenes, tarjetas.
+ */
 class Coords {
+  /**
+   * @Constructor
+   * @param {*} x - ubicacion del elemento en el eje x
+   * @param {*} y - ubicacion del elemento en el eje y
+   * @param {*} coordX - columna que ocupa el elemento
+   * @param {*} coordY - fila que ocupa el elemento
+   */
   constructor(x = 0, y = 0, coordX = 0, coordY = 0) {
     this.x = x;
     this.y = y;
@@ -6,19 +18,49 @@ class Coords {
     this.coordY = coordY;
   }
 
+  /**
+   * @typedef {position}
+   * @property {number}
+   * @property {number}
+   */
+
+  /**
+   * @returns {position} - Posicion en el eje 'x' y 'y' del objeto
+   */
   getPosition() {
     return { x: this.x, y: this.y };
   }
 
+  /**
+   * @typedef {coords}
+   * @property {number}
+   * @property {number}
+   */
+
+  /**
+   * @returns {coords} - ubicacion de la columna y la fila del objeto
+   */
   getCoords() {
     return { cx: this.coordX, cy: this.coordY };
   }
 
+  /**
+   * @description
+   * actualiza el nuevo valor de los ejes cartesianos del objeto
+   * @param {number} x ubicacion en el eje x
+   * @param {number} y ubicacion en el eje y
+   */
   setPosition(x, y) {
     this.x = x;
     this.y = y;
   }
 
+  /**
+   * @description
+   * actualiza el nuevo valor de la fila y columana del objeto
+   * @param {number} cx ubicacion de la columna
+   * @param {number} cy ubicacion de la fila
+   */
   setCoords(cx, cy) {
     this.coordX = cx;
     this.coordY = cy;
@@ -29,19 +71,14 @@ class Board {
   constructor() {
     this.boxes = [];
     this.stars = [];
+    this.players = [];
     this.playerTurn = 0;
     this.changeTurn = false;
+    this.zoom = false;
     this.logo = new NewImage("./../assets/its.png");
     this.text = new CreateText(window.innerWidth, window.innerHeight / 2);
 
-    for (let star = 0; star < STARS; star++)
-      this.stars.push(
-        new Star(
-          Math.floor(Math.random() * window.innerWidth),
-          -10,
-          Math.floor(Math.random() * 8)
-        )
-      );
+    for (let star = 0; star < STARS; star++) this.stars.push(new Star());
 
     this.fillBoard();
   }
@@ -98,16 +135,40 @@ class Board {
   }
 
   udpate(ctx) {
-    let responsiveObj = this.responsive();
-
     for (const star of this.stars) {
       star.update(ctx);
     }
-    for (const box of this.boxes) {
-      box.draw(ctx, responsiveObj);
+    if (this.zoom) {
+      this.zoomMode(ctx);
+    } else {
+      this.completeMap(ctx);
     }
-    this.drawLogo(ctx);
     this.showText(ctx);
+  }
+
+  zoomMode(ctx) {
+    const { cx, cy } = this.players[this.playerTurn].getCoords();
+    const boxZoomSize = window.innerWidth / 5 - 20;
+
+    const x = window.innerWidth / 2 - boxZoomSize / 2;
+    const y = window.innerHeight / 2 - boxZoomSize / 2;
+
+    for (const box of this.boxes)
+      box.drawZoomBoxes(ctx, cx, cy, x, y, boxZoomSize);
+
+    for (const player of this.players)
+      player.drawZoom(ctx, cx, cy, boxZoomSize, x, y);
+  }
+
+  ////////////////////
+
+  completeMap(ctx) {
+    const responsiveObj = this.responsive();
+
+    for (const box of this.boxes) box.draw(ctx, responsiveObj);
+    for (const player of this.players) player.draw(ctx, responsiveObj);
+
+    this.drawLogo(ctx);
   }
 
   drawLogo(ctx) {
@@ -119,14 +180,15 @@ class Board {
 
   showText(ctx) {
     if (this.changeTurn) {
-      if (this.text.update(`Turno de ${players[this.playerTurn].name}`, ctx)) {
+      if (
+        this.text.update(`Turno de ${this.players[this.playerTurn].name}`, ctx)
+      ) {
         this.changeTurn = false;
         this.text.x = window.innerWidth;
       }
     }
   }
 
-  //
   // Funciones creadas para el diseno responsivo del
   // tablero de juego y medidas de casillas y jugador
   //
@@ -192,11 +254,36 @@ class Board {
     let size;
     if (w > 1200) size = { w: 400, h: 300 };
     else if (w > 992) size = { w: 360, h: 260 };
-    else if (w > 768) size = { w: 320, h: 220 };
-    else if (w > 576) size = { w: 280, h: 180 };
+    else if (w > 768) size = { w: 310, h: 210 };
+    else if (w > 576) size = { w: 260, h: 160 };
     else size = { w: 190, h: 110 };
 
     return size;
+  }
+
+  /**
+   * @description
+   * realiza la tirada del jugador
+   */
+  newTurn() {
+    // Solo se podra activar si el turno corresponde al jugador indicado.
+    if (user.id === this.playerTurn && !this.changeTurn) {
+      //
+      // Se establece el tiro del jugador
+      this.players[user.id].move(dice, this.boxes); // se actualiza las nuevas coordenadas del jugador
+      socketIO.emit("change", this.players[user.id].getCoords()); // se emite la nueva posicion a los demas jugadores
+      this.changeTurn = true;
+      dice.setState("off"); // se cambia el estado del dado
+      this.setTurn(); // se actualiza el numero de turno
+    }
+  }
+
+  setTurn() {
+    this.playerTurn++;
+
+    if (this.playerTurn === MAX_PLAYERS) {
+      this.playerTurn = 0;
+    }
   }
 }
 
@@ -212,7 +299,15 @@ class Box extends Coords {
     let { cx, cy } = super.getCoords();
 
     super.setPosition(x, y);
-    this.img.update(ctx, size, this.x, this.y, cx, cy);
+    this.img.drawBox(ctx, size, this.x, this.y, cx, cy);
+  }
+
+  drawZoomBoxes(ctx, _cx, _cy, x, y, size) {
+    const { cx, cy } = super.getCoords();
+    const X = size * (cx - _cx) + x;
+    const Y = size * (cy - _cy) + y;
+
+    ctx.drawImage(this.img.img, X, Y, size, size);
   }
 }
 
@@ -238,18 +333,18 @@ class Dice {
 }
 
 class Star {
-  constructor(x, y, speed) {
-    this.x = x;
-    this.y = y;
+  constructor() {
+    this.x = Math.floor(Math.random() * window.innerWidth);
+    this.y = -10;
     this.starSize = 5;
-    this.speed = speed;
+    this.speed = Math.floor(Math.random() * 8);
   }
 
   update(ctx) {
     this.y += this.speed;
 
     if (this.y > 1000) {
-      this.y = 0;
+      this.y = -10;
       this.x = Math.floor(Math.random() * window.innerWidth);
       this.speed = Math.floor(Math.random() * 8) + 1;
     }
@@ -269,7 +364,7 @@ class NewImage {
     this.img.src = src;
   }
 
-  update(ctx, size, x, y, cx, cy) {
+  drawBox(ctx, size, x, y, cx, cy) {
     if (cx === 11 && cy === 7)
       ctx.drawImage(
         this.img,
@@ -279,6 +374,10 @@ class NewImage {
         size * 2
       );
     else ctx.drawImage(this.img, x + cx * size, y + cy * size, size, size);
+  }
+
+  drawPlayer(ctx, x, y, size) {
+    ctx.drawImage(this.img, x, y, size, size);
   }
 }
 
@@ -301,3 +400,34 @@ class CreateText {
     return false;
   }
 }
+
+/* class changeViewAnimation {
+  constructor(time) {
+    this.counter = 0;
+    this.reverse = false;
+    this.time = Math.floor((time * 60) / 10);
+    this.ticks = 0;
+  }
+
+  drawBlock() {
+    context.fillStyle = `#000${this.counter}`;
+    ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+    this.changeReverse();
+  }
+
+  update() {
+    if (!this.reverse) this.counter++;
+    else this.counter--;
+  }
+
+  changeReverse() {
+    this.ticks++;
+
+    if (this.ticks === this.time) {
+      this.update();
+      this.ticks = 0;
+    }
+
+    if (this.counter === 9) this.reverse = true;
+  }
+} */

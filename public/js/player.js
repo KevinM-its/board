@@ -1,10 +1,11 @@
 class Player extends Coords {
-  constructor(name, color) {
-    super(0, 0, BOARD_GAME[0].length - 1, BOARD_GAME.length - 1);
+  constructor(name, img) {
+    //super(0, 0, BOARD_GAME[0].length - 1, BOARD_GAME.length - 1);
+    super(0, 0, 8, 0);
+
     this.name = name;
-    this.color = color;
-    this.direction = "u";
-    this.fontSize = "30px";
+    this.img = img;
+    this.direction = "l";
     this.setPositon(board.boxes);
   }
 
@@ -12,19 +13,17 @@ class Player extends Coords {
     return { name: this.name, letter: this.letter };
   }
 
-  draw(ctx) {
-    let responsive = board.responsive();
-    ctx.beginPath();
-    ctx.fillStyle = this.color;
-    let radius = responsive.size / 2;
-    ctx.arc(
-      responsive.x + this.coordX * responsive.size + radius,
-      responsive.y + this.coordY * responsive.size + radius,
-      radius,
-      0,
-      2 * Math.PI
-    );
-    ctx.fill();
+  draw(ctx, res) {
+    const { size, x, y } = res;
+    const { cx, cy } = super.getCoords();
+    this.img.drawPlayer(ctx, x + cx * size, y + cy * size, size);
+  }
+
+  drawZoom(ctx, _cx, _cy, size, x, y) {
+    const { cx, cy } = super.getCoords();
+    const X = size * (cx - _cx) + x;
+    const Y = size * (cy - _cy) + y;
+    this.img.drawPlayer(ctx, X, Y, size);
   }
 
   move(sice, boxes) {
@@ -43,14 +42,15 @@ class Player extends Coords {
       case "d":
         this.moveDown(number);
         break;
+      default:
+        throw new Error("Movement not allowed");
     }
     this.setPositon(boxes);
   }
 
   setPositon(boxes, coords = undefined) {
     coords = coords || super.getCoords();
-    this.coordX = coords.cx;
-    this.coordY = coords.cy;
+    super.setCoords(coords.cx, coords.cy);
 
     for (const box of boxes) {
       const { cX, cY } = box.getCoords();

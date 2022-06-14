@@ -4,22 +4,22 @@ socketIO.on("start game", (ps) => {
 
   for (const p of ps) {
     if (user.name === p.player.name) {
-      numPlayer = p.id;
+      user.id = p.id;
     }
-    players.push(new Player(p.player.name, COLORS[p.id]));
+    board.players.push(
+      new Player(
+        p.player.name,
+        new NewImage(`../assets/players/r${p.id + 1}.png`)
+      )
+    );
   }
 
   $login.innerHTML = "";
 });
 
 socketIO.on("update", (coords) => {
-  players[board.playerTurn].setPositon(board.boxes, coords);
-
-  board.playerTurn++;
-
-  if (board.playerTurn === MAX_PLAYERS) board.playerTurn = 0;
-
-  if (numPlayer === board.playerTurn) dice.setState("on");
-
+  board.players[board.playerTurn].setPositon(board.boxes, coords);
+  board.setTurn();
+  if (user.id === board.playerTurn) dice.setState("on");
   board.changeTurn = true;
 });

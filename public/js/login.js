@@ -1,9 +1,9 @@
-const user = { name: null, color: BLUES };
+const user = { name: null, id: null };
 
 $button.addEventListener("click", () => {
   user.name = $input.value;
 
-  if (user.color && user.name) {
+  if (user.name) {
     $login.innerHTML = `
       <h1>
         Esperando a un jugador
@@ -17,6 +17,4 @@ $button.addEventListener("click", () => {
   }
 });
 
-let players = [];
 let start_game = false;
-let numPlayer;

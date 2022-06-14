@@ -11,7 +11,7 @@ html {
 }
 
 body {
-  background-color: #000;
+  background-color: #00111b;
 }
 
 .container {
@@ -81,7 +81,7 @@ h2 {
 }
 
 .dice,
-.status {
+.map {
   position: absolute;
   box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px,
     rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;
@@ -99,7 +99,7 @@ h2 {
   transition: 0.5s;
 }
 
-.status {
+.map {
   top: 120px;
   left: 10px;
   background-image: url(../assets/status.png);
@@ -120,7 +120,7 @@ h2 {
 }
 
 .dice:hover,
-.status:hover {
+.map:hover {
   width: 100px;
   height: 100px;
 }
